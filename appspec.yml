@@ -8,7 +8,7 @@ hooks:
     - location: scripts/stop_server.sh
       timeout: 30
       runas: root
-  BeforeInstall:
+  AfterInstall:
     - location: scripts/install_dependencies.sh
       timeout: 300
       runas: root
