@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h2>Dữ liệu từ RDS</h2>
+    <p>Phiên bản: <span id="version"></span></p>
+    <ul id="list"></ul>
+    <script>
+        fetch('/api/users').then(r => r.json()).then(res => {
+            document.getElementById('version').innerText = res.version;
+            res.data.forEach(u => {
+                let li = document.createElement('li');
+                li.innerText = u.display_data;
+                document.getElementById('list').appendChild(li);
+            });
+        });
+    </script>
+</body>
+</html>
