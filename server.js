@@ -19,7 +19,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/users', (req, res) => {
     db.query('SELECT phone AS display_data FROM users', (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ version: "V2 (Phone Number)", data: results });
+        res.json({ version: "Đăng Đẹp Trai", data: results });
     });
 });
 
