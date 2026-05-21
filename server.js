@@ -17,9 +17,9 @@ const db = mysql.createPool({
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/users', (req, res) => {
-    db.query('SELECT name AS display_data FROM users', (err, results) => {
+    db.query('SELECT phone AS display_data FROM users', (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ version: "V1 (Name)", data: results });
+        res.json({ version: "V1 (Phone Number)", data: results });
     });
 });
 
