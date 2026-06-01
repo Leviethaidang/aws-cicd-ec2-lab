@@ -1,18 +1,199 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Danh sách người dùng</title>
+
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 24px;
+            background: #f7f7f7;
+            color: #222;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        button {
+            margin-bottom: 16px;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #2563eb;
+            color: #fff;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            background: #fff;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #f4f4f4;
+        }
+
+        .status {
+            margin-top: 12px;
+            color: #666;
+        }
+
+        .error {
+            color: #dc2626;
+        }
+    </style>
+</head>
+
 <body>
-    <h2>Dữ liệu từ RDS</h2>
-    <p>Phiên bản: <span id="version"></span></p>
-    <ul id="list"></ul>
+    <div class="container">
+        <h1>Danh sách người dùng</h1>
+
+        <button id="show-address-btn">
+            Xem địa chỉ khách hàng
+        </button>
+
+        <table>
+            <thead>
+                <tr id="table-header">
+                    <th>Tên</th>
+                    <th>Số điện thoại</th>
+                </tr>
+            </thead>
+
+            <tbody id="users-body">
+                <!-- Dữ liệu sẽ được chèn ở đây -->
+            </tbody>
+        </table>
+
+        <p id="status" class="status"></p>
+    </div>
+
     <script>
-        fetch('/api/users').then(r => r.json()).then(res => {
-            document.getElementById('version').innerText = res.version;
-            res.data.forEach(u => {
-                let li = document.createElement('li');
-                li.innerText = u.display_data;
-                document.getElementById('list').appendChild(li);
+        const usersBody = document.getElementById('users-body');
+        const tableHeader = document.getElementById('table-header');
+        const statusEl = document.getElementById('status');
+        const showAddressBtn = document.getElementById('show-address-btn');
+
+        function setStatus(message, isError = false) {
+            statusEl.textContent = message;
+            statusEl.className = isError ? 'status error' : 'status';
+        }
+
+        function renderHeader(showAddress = false) {
+            tableHeader.innerHTML = `
+                <th>Tên</th>
+                <th>Số điện thoại</th>
+                ${showAddress ? '<th>Địa chỉ</th>' : ''}
+            `;
+        }
+
+        function renderUsers(users, showAddress = false) {
+            usersBody.innerHTML = '';
+
+            if (!users || users.length === 0) {
+                setStatus('Không có dữ liệu.');
+                return;
+            }
+
+            setStatus('');
+
+            users.forEach(user => {
+                const tr = document.createElement('tr');
+
+                const tdName = document.createElement('td');
+                tdName.textContent = user.name || '';
+
+                const tdPhone = document.createElement('td');
+                tdPhone.textContent = user.display_data || '';
+
+                tr.appendChild(tdName);
+                tr.appendChild(tdPhone);
+
+                if (showAddress) {
+                    const tdAddress = document.createElement('td');
+                    tdAddress.textContent = user.display_address || '';
+                    tr.appendChild(tdAddress);
+                }
+
+                usersBody.appendChild(tr);
             });
-        });
+        }
+
+        async function loadUsers() {
+            try {
+                renderHeader(false);
+                setStatus('Đang tải danh sách người dùng...');
+                showAddressBtn.disabled = false;
+
+                const response = await fetch('/api/users');
+
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+
+                const result = await response.json();
+
+                renderUsers(result.data, false);
+
+            } catch (error) {
+                setStatus('Lỗi khi tải danh sách người dùng: ' + error.message, true);
+            }
+        }
+
+        async function loadUsersWithAddress() {
+            try {
+                setStatus('Đang tải địa chỉ khách hàng...');
+                showAddressBtn.disabled = true;
+
+                const response = await fetch('/api/users/address');
+
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+
+                const result = await response.json();
+
+                renderHeader(true);
+                renderUsers(result.data, true);
+
+            } catch (error) {
+                setStatus('Lỗi khi tải địa chỉ khách hàng: ' + error.message, true);
+                showAddressBtn.disabled = false;
+            }
+        }
+
+        showAddressBtn.addEventListener('click', loadUsersWithAddress);
+
+        window.addEventListener('DOMContentLoaded', loadUsers);
     </script>
 </body>
 </html>
