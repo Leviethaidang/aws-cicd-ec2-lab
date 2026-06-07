@@ -5,12 +5,12 @@ const path = require('path');
 const app = express();
 const port = 80;
 
-// Cấu hình Connection Pool kết nối tới RDS (Lát nữa tạo RDS xong ta sẽ điền Endpoint vào đây)
+// Cấu hình Connection Pool kết nối tới RDS
 const db = mysql.createPool({
-    host: 'appdb.c5mwgwqs805f.ap-southeast-1.rds.amazonaws.com',
-    user: 'admin',
-    password: 'Letmein123!!!',
-    database: 'appdb',
+    host: process.env.DB_HOST || 'localhost', // co bien DB_HOST thi lay, khong thi la localhost
+    user: process.env.DB_USER || 'admin',
+    password: process.env.DB_PASSWORD || 'Letmein123!!!',
+    database: process.env.DB_NAME || 'appdb',
     waitForConnections: true,
     connectionLimit: 10
 });
