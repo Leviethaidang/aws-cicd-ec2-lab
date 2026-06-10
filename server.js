@@ -16,20 +16,89 @@ const db = mysql.createPool({
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-//safe
+function validateUserPayload(req, res, next) {
+    const { name, phone, address } = req.body;
+
+    if (!name || !phone || !address) {
+        return res.status(400).json({
+            error: 'Vui long nhap day du ten, so dien thoai va dia chi'
+        });
+    }
+
+    req.userPayload = {
+        name: name.trim(),
+        phone: phone.trim(),
+        address: address.trim()
+    };
+
+    next();
+}
+
 app.get('/api/users', (req, res) => {
-    db.query('SELECT name, phone AS display_data FROM users', (err, results) => {
+    db.query('SELECT id, name, phone AS display_data, address AS display_address FROM users ORDER BY id DESC', (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ version: "1", data: results });
     });
 });
 
-//unsafe
 app.get('/api/users/address', (req, res) => {
-    db.query('SELECT name, phone AS display_data, address AS display_address FROM users', (err, results) => {
+    db.query('SELECT id, name, phone AS display_data, address AS display_address FROM users ORDER BY id DESC', (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ version: "2", data: results });
+    });
+});
+
+app.post('/api/users', validateUserPayload, (req, res) => {
+    const { name, phone, address } = req.userPayload;
+
+    db.query(
+        'INSERT INTO users (name, phone, address) VALUES (?, ?, ?)',
+        [name, phone, address],
+        (err, result) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            res.status(201).json({
+                message: 'Them nguoi dung thanh cong',
+                data: { id: result.insertId, name, phone, address }
+            });
+        }
+    );
+});
+
+app.put('/api/users/:id', validateUserPayload, (req, res) => {
+    const { name, phone, address } = req.userPayload;
+    const { id } = req.params;
+
+    db.query(
+        'UPDATE users SET name = ?, phone = ?, address = ? WHERE id = ?',
+        [name, phone, address, id],
+        (err, result) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: 'Khong tim thay nguoi dung' });
+            }
+
+            res.json({
+                message: 'Cap nhat nguoi dung thanh cong',
+                data: { id: Number(id), name, phone, address }
+            });
+        }
+    );
+});
+
+app.delete('/api/users/:id', (req, res) => {
+    const { id } = req.params;
+
+    db.query('DELETE FROM users WHERE id = ?', [id], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Khong tim thay nguoi dung' });
+        }
+
+        res.json({ message: 'Xoa nguoi dung thanh cong' });
     });
 });
 

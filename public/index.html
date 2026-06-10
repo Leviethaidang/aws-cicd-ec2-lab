@@ -3,9 +3,13 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Danh sách người dùng</title>
+    <title>Test CRUD project</title>
 
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: Arial, Helvetica, sans-serif;
             margin: 24px;
@@ -14,7 +18,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 980px;
             margin: 0 auto;
             background: #fff;
             padding: 24px;
@@ -24,11 +28,48 @@
 
         h1 {
             margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        .user-form {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        input:focus {
+            border-color: #2563eb;
+            outline: none;
+        }
+
+        .form-actions {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         button {
-            margin-bottom: 16px;
-            padding: 10px 16px;
+            padding: 10px 14px;
             border: none;
             border-radius: 6px;
             background: #2563eb;
@@ -46,20 +87,54 @@
             cursor: not-allowed;
         }
 
+        .secondary-btn {
+            background: #6b7280;
+        }
+
+        .secondary-btn:hover {
+            background: #4b5563;
+        }
+
+        .danger-btn {
+            background: #dc2626;
+        }
+
+        .danger-btn:hover {
+            background: #b91c1c;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
         table {
             border-collapse: collapse;
             width: 100%;
+            min-width: 720px;
             background: #fff;
         }
 
-        th, td {
+        th,
+        td {
             border: 1px solid #ddd;
             padding: 10px;
             text-align: left;
+            vertical-align: top;
         }
 
         th {
             background: #f4f4f4;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .actions button {
+            padding: 8px 10px;
+            margin: 0;
         }
 
         .status {
@@ -70,61 +145,113 @@
         .error {
             color: #dc2626;
         }
+
+        .success {
+            color: #15803d;
+        }
+
+        @media (max-width: 760px) {
+            body {
+                margin: 12px;
+            }
+
+            .container {
+                padding: 16px;
+            }
+
+            .user-form {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>Danh sách người dùng</h1>
+        <h1>Quản lý người dùng</h1>
 
-        <button id="show-address-btn">
-            Xem địa chỉ khách hàng
-        </button>
+        <form id="user-form" class="user-form">
+            <input type="hidden" id="user-id">
 
-        <table>
-            <thead>
-                <tr id="table-header">
-                    <th>Tên</th>
-                    <th>Số điện thoại</th>
-                </tr>
-            </thead>
+            <label>
+                Tên
+                <input id="name" name="name" type="text" required maxlength="255">
+            </label>
 
-            <tbody id="users-body">
-                <!-- Dữ liệu sẽ được chèn ở đây -->
-            </tbody>
-        </table>
+            <label>
+                Số điện thoại
+                <input id="phone" name="phone" type="tel" required maxlength="50">
+            </label>
+
+            <label>
+                Địa chỉ
+                <input id="address" name="address" type="text" required maxlength="255">
+            </label>
+
+            <div class="form-actions">
+                <button id="submit-btn" type="submit">Thêm người dùng</button>
+                <button id="cancel-btn" class="secondary-btn" type="button" hidden>Hủy sửa</button>
+            </div>
+        </form>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tên</th>
+                        <th>Số điện thoại</th>
+                        <th>Địa chỉ</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+
+                <tbody id="users-body"></tbody>
+            </table>
+        </div>
 
         <p id="status" class="status"></p>
     </div>
 
     <script>
         const usersBody = document.getElementById('users-body');
-        const tableHeader = document.getElementById('table-header');
         const statusEl = document.getElementById('status');
-        const showAddressBtn = document.getElementById('show-address-btn');
+        const userForm = document.getElementById('user-form');
+        const userIdInput = document.getElementById('user-id');
+        const nameInput = document.getElementById('name');
+        const phoneInput = document.getElementById('phone');
+        const addressInput = document.getElementById('address');
+        const submitBtn = document.getElementById('submit-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
 
-        function setStatus(message, isError = false) {
+        let users = [];
+
+        function setStatus(message, type = '') {
             statusEl.textContent = message;
-            statusEl.className = isError ? 'status error' : 'status';
+            statusEl.className = type ? `status ${type}` : 'status';
         }
 
-        function renderHeader(showAddress = false) {
-            tableHeader.innerHTML = `
-                <th>Tên</th>
-                <th>Số điện thoại</th>
-                ${showAddress ? '<th>Địa chỉ</th>' : ''}
-            `;
+        function getUserPayload() {
+            return {
+                name: nameInput.value.trim(),
+                phone: phoneInput.value.trim(),
+                address: addressInput.value.trim()
+            };
         }
 
-        function renderUsers(users, showAddress = false) {
+        function resetForm() {
+            userForm.reset();
+            userIdInput.value = '';
+            submitBtn.textContent = 'Thêm người dùng';
+            cancelBtn.hidden = true;
+        }
+
+        function renderUsers() {
             usersBody.innerHTML = '';
 
-            if (!users || users.length === 0) {
-                setStatus('Không có dữ liệu.');
+            if (!users.length) {
+                usersBody.innerHTML = '<tr><td colspan="4">Không có dữ liệu.</td></tr>';
                 return;
             }
-
-            setStatus('');
 
             users.forEach(user => {
                 const tr = document.createElement('tr');
@@ -135,24 +262,38 @@
                 const tdPhone = document.createElement('td');
                 tdPhone.textContent = user.display_data || '';
 
+                const tdAddress = document.createElement('td');
+                tdAddress.textContent = user.display_address || '';
+
+                const tdActions = document.createElement('td');
+                tdActions.className = 'actions';
+
+                const editBtn = document.createElement('button');
+                editBtn.type = 'button';
+                editBtn.className = 'secondary-btn';
+                editBtn.textContent = 'Sửa';
+                editBtn.addEventListener('click', () => startEdit(user));
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.className = 'danger-btn';
+                deleteBtn.textContent = 'Xóa';
+                deleteBtn.addEventListener('click', () => deleteUser(user));
+
+                tdActions.appendChild(editBtn);
+                tdActions.appendChild(deleteBtn);
+
                 tr.appendChild(tdName);
                 tr.appendChild(tdPhone);
-
-                if (showAddress) {
-                    const tdAddress = document.createElement('td');
-                    tdAddress.textContent = user.display_address || '';
-                    tr.appendChild(tdAddress);
-                }
-
+                tr.appendChild(tdAddress);
+                tr.appendChild(tdActions);
                 usersBody.appendChild(tr);
             });
         }
 
         async function loadUsers() {
             try {
-                renderHeader(false);
                 setStatus('Đang tải danh sách người dùng...');
-                showAddressBtn.disabled = false;
 
                 const response = await fetch('/api/users');
 
@@ -161,38 +302,91 @@
                 }
 
                 const result = await response.json();
-
-                renderUsers(result.data, false);
-
+                users = result.data || [];
+                renderUsers();
+                setStatus('');
             } catch (error) {
-                setStatus('Lỗi khi tải danh sách người dùng: ' + error.message, true);
+                setStatus('Lỗi khi tải danh sách người dùng: ' + error.message, 'error');
             }
         }
 
-        async function loadUsersWithAddress() {
+        function startEdit(user) {
+            userIdInput.value = user.id;
+            nameInput.value = user.name || '';
+            phoneInput.value = user.display_data || '';
+            addressInput.value = user.display_address || '';
+            submitBtn.textContent = 'Cập nhật người dùng';
+            cancelBtn.hidden = false;
+            nameInput.focus();
+        }
+
+        async function saveUser(event) {
+            event.preventDefault();
+
+            const id = userIdInput.value;
+            const payload = getUserPayload();
+            const url = id ? `/api/users/${id}` : '/api/users';
+            const method = id ? 'PUT' : 'POST';
+
             try {
-                setStatus('Đang tải địa chỉ khách hàng...');
-                showAddressBtn.disabled = true;
+                submitBtn.disabled = true;
+                setStatus(id ? 'Đang cập nhật người dùng...' : 'Đang thêm người dùng...');
 
-                const response = await fetch('/api/users/address');
-
-                if (!response.ok) {
-                    throw new Error('HTTP ' + response.status);
-                }
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
                 const result = await response.json();
 
-                renderHeader(true);
-                renderUsers(result.data, true);
+                if (!response.ok) {
+                    throw new Error(result.error || 'HTTP ' + response.status);
+                }
 
+                resetForm();
+                await loadUsers();
+                setStatus(result.message, 'success');
             } catch (error) {
-                setStatus('Lỗi khi tải địa chỉ khách hàng: ' + error.message, true);
-                showAddressBtn.disabled = false;
+                setStatus('Lỗi khi lưu người dùng: ' + error.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
             }
         }
 
-        showAddressBtn.addEventListener('click', loadUsersWithAddress);
+        async function deleteUser(user) {
+            const confirmed = confirm(`Bạn có chắc muốn xóa người dùng "${user.name}"?`);
 
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                setStatus('Đang xóa người dùng...');
+
+                const response = await fetch(`/api/users/${user.id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'HTTP ' + response.status);
+                }
+
+                if (userIdInput.value === String(user.id)) {
+                    resetForm();
+                }
+
+                await loadUsers();
+                setStatus(result.message, 'success');
+            } catch (error) {
+                setStatus('Lỗi khi xóa người dùng: ' + error.message, 'error');
+            }
+        }
+
+        userForm.addEventListener('submit', saveUser);
+        cancelBtn.addEventListener('click', resetForm);
         window.addEventListener('DOMContentLoaded', loadUsers);
     </script>
 </body>
