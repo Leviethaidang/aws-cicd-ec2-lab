@@ -24,7 +24,7 @@ function validateUserPayload(req, res, next) {
 
     if (!name || !phone || !address) {
         return res.status(400).json({
-            error: 'Vui long nhap day du ten, so dien thoai va dia chi'
+            error: 'Please fill in all fields: name, phone, and address'    
         });
     }
 
@@ -38,7 +38,7 @@ function validateUserPayload(req, res, next) {
 }
 
 app.get('/api/users', (req, res) => {
-    db.query('SELECT id, name, phone AS display_data, address AS display_address FROM users ORDER BY id DESC', (err, results) => {
+    db.query('SELECT id, name, phone AS display_data FROM users ORDER BY id DESC', (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ version: "1", data: results });
     });
@@ -61,7 +61,7 @@ app.post('/api/users', validateUserPayload, (req, res) => {
             if (err) return res.status(500).json({ error: err.message });
 
             res.status(201).json({
-                message: 'Them nguoi dung thanh cong',
+                message: 'User added successfully',
                 data: { id: result.insertId, name, phone, address }
             });
         }
@@ -78,11 +78,11 @@ app.put('/api/users/:id', validateUserPayload, (req, res) => {
         (err, result) => {
             if (err) return res.status(500).json({ error: err.message });
             if (result.affectedRows === 0) {
-                return res.status(404).json({ error: 'Khong tim thay nguoi dung' });
+                return res.status(404).json({ error: 'Not found' });
             }
 
             res.json({
-                message: 'Cap nhat nguoi dung thanh cong',
+                message: 'User updated successfully ',
                 data: { id: Number(id), name, phone, address }
             });
         }
@@ -95,10 +95,10 @@ app.delete('/api/users/:id', (req, res) => {
     db.query('DELETE FROM users WHERE id = ?', [id], (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
         if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Khong tim thay nguoi dung' });
+            return res.status(404).json({ error: 'Not found' });
         }
 
-        res.json({ message: 'Xoa nguoi dung thanh cong' });
+        res.json({ message: 'Deleted successfully' });
     });
 });
 

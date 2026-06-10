@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Test CRUD project</title>
+    <title>Test CRUD</title>
 
     <style>
         * {
@@ -35,9 +35,7 @@
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 12px;
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 16px;
         }
 
         label {
@@ -61,11 +59,13 @@
             outline: none;
         }
 
-        .form-actions {
-            grid-column: 1 / -1;
+        .toolbar {
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e5e7eb;
         }
 
         button {
@@ -110,7 +110,7 @@
         table {
             border-collapse: collapse;
             width: 100%;
-            min-width: 720px;
+            min-width: 640px;
             background: #fff;
         }
 
@@ -134,7 +134,6 @@
 
         .actions button {
             padding: 8px 10px;
-            margin: 0;
         }
 
         .status {
@@ -168,7 +167,7 @@
 
 <body>
     <div class="container">
-        <h1>Quản lý người dùng</h1>
+        <h1>Test CRUD</h1>
 
         <form id="user-form" class="user-form">
             <input type="hidden" id="user-id">
@@ -187,22 +186,18 @@
                 Địa chỉ
                 <input id="address" name="address" type="text" required maxlength="255">
             </label>
-
-            <div class="form-actions">
-                <button id="submit-btn" type="submit">Thêm người dùng</button>
-                <button id="cancel-btn" class="secondary-btn" type="button" hidden>Hủy sửa</button>
-            </div>
         </form>
+
+        <div class="toolbar">
+            <button id="submit-btn" type="submit" form="user-form">Thêm người dùng</button>
+            <button id="cancel-btn" class="secondary-btn" type="button" hidden>Hủy sửa</button>
+            <button id="show-address-btn" class="secondary-btn" type="button">Xem địa chỉ khách hàng</button>
+        </div>
 
         <div class="table-wrap">
             <table>
                 <thead>
-                    <tr>
-                        <th>Tên</th>
-                        <th>Số điện thoại</th>
-                        <th>Địa chỉ</th>
-                        <th>Thao tác</th>
-                    </tr>
+                    <tr id="table-header"></tr>
                 </thead>
 
                 <tbody id="users-body"></tbody>
@@ -214,6 +209,7 @@
 
     <script>
         const usersBody = document.getElementById('users-body');
+        const tableHeader = document.getElementById('table-header');
         const statusEl = document.getElementById('status');
         const userForm = document.getElementById('user-form');
         const userIdInput = document.getElementById('user-id');
@@ -222,8 +218,10 @@
         const addressInput = document.getElementById('address');
         const submitBtn = document.getElementById('submit-btn');
         const cancelBtn = document.getElementById('cancel-btn');
+        const showAddressBtn = document.getElementById('show-address-btn');
 
         let users = [];
+        let showAddress = false;
 
         function setStatus(message, type = '') {
             statusEl.textContent = message;
@@ -245,11 +243,21 @@
             cancelBtn.hidden = true;
         }
 
+        function renderHeader() {
+            tableHeader.innerHTML = `
+                <th>Tên</th>
+                <th>Số điện thoại</th>
+                ${showAddress ? '<th>Địa chỉ</th>' : ''}
+                <th>Thao tác</th>
+            `;
+        }
+
         function renderUsers() {
             usersBody.innerHTML = '';
+            renderHeader();
 
             if (!users.length) {
-                usersBody.innerHTML = '<tr><td colspan="4">Không có dữ liệu.</td></tr>';
+                usersBody.innerHTML = `<tr><td colspan="${showAddress ? 4 : 3}">Không có dữ liệu.</td></tr>`;
                 return;
             }
 
@@ -261,9 +269,6 @@
 
                 const tdPhone = document.createElement('td');
                 tdPhone.textContent = user.display_data || '';
-
-                const tdAddress = document.createElement('td');
-                tdAddress.textContent = user.display_address || '';
 
                 const tdActions = document.createElement('td');
                 tdActions.className = 'actions';
@@ -285,24 +290,36 @@
 
                 tr.appendChild(tdName);
                 tr.appendChild(tdPhone);
-                tr.appendChild(tdAddress);
+
+                if (showAddress) {
+                    const tdAddress = document.createElement('td');
+                    tdAddress.textContent = user.display_address || '';
+                    tr.appendChild(tdAddress);
+                }
+
                 tr.appendChild(tdActions);
                 usersBody.appendChild(tr);
             });
         }
 
+        async function fetchUsers(url) {
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+
+            const result = await response.json();
+            return result.data || [];
+        }
+
         async function loadUsers() {
             try {
+                showAddress = false;
+                showAddressBtn.disabled = false;
                 setStatus('Đang tải danh sách người dùng...');
 
-                const response = await fetch('/api/users');
-
-                if (!response.ok) {
-                    throw new Error('HTTP ' + response.status);
-                }
-
-                const result = await response.json();
-                users = result.data || [];
+                users = await fetchUsers('/api/users');
                 renderUsers();
                 setStatus('');
             } catch (error) {
@@ -310,14 +327,43 @@
             }
         }
 
-        function startEdit(user) {
-            userIdInput.value = user.id;
-            nameInput.value = user.name || '';
-            phoneInput.value = user.display_data || '';
-            addressInput.value = user.display_address || '';
-            submitBtn.textContent = 'Cập nhật người dùng';
-            cancelBtn.hidden = false;
-            nameInput.focus();
+        async function loadUsersWithAddress() {
+            try {
+                setStatus('Đang tải địa chỉ khách hàng...');
+                showAddressBtn.disabled = true;
+
+                users = await fetchUsers('/api/users/address');
+                showAddress = true;
+                renderUsers();
+                setStatus('');
+            } catch (error) {
+                setStatus('Lỗi khi tải địa chỉ khách hàng: ' + error.message, 'error');
+                showAddressBtn.disabled = false;
+            }
+        }
+
+        async function getAddressForEdit(user) {
+            if (user.display_address !== undefined) {
+                return user.display_address || '';
+            }
+
+            const usersWithAddress = await fetchUsers('/api/users/address');
+            const matchedUser = usersWithAddress.find(item => String(item.id) === String(user.id));
+            return matchedUser ? matchedUser.display_address || '' : '';
+        }
+
+        async function startEdit(user) {
+            try {
+                userIdInput.value = user.id;
+                nameInput.value = user.name || '';
+                phoneInput.value = user.display_data || '';
+                addressInput.value = await getAddressForEdit(user);
+                submitBtn.textContent = 'Cập nhật người dùng';
+                cancelBtn.hidden = false;
+                nameInput.focus();
+            } catch (error) {
+                setStatus('Lỗi khi lấy địa chỉ để sửa người dùng: ' + error.message, 'error');
+            }
         }
 
         async function saveUser(event) {
@@ -345,7 +391,13 @@
                 }
 
                 resetForm();
-                await loadUsers();
+
+                if (showAddress) {
+                    await loadUsersWithAddress();
+                } else {
+                    await loadUsers();
+                }
+
                 setStatus(result.message, 'success');
             } catch (error) {
                 setStatus('Lỗi khi lưu người dùng: ' + error.message, 'error');
@@ -378,7 +430,12 @@
                     resetForm();
                 }
 
-                await loadUsers();
+                if (showAddress) {
+                    await loadUsersWithAddress();
+                } else {
+                    await loadUsers();
+                }
+
                 setStatus(result.message, 'success');
             } catch (error) {
                 setStatus('Lỗi khi xóa người dùng: ' + error.message, 'error');
@@ -387,6 +444,7 @@
 
         userForm.addEventListener('submit', saveUser);
         cancelBtn.addEventListener('click', resetForm);
+        showAddressBtn.addEventListener('click', loadUsersWithAddress);
         window.addEventListener('DOMContentLoaded', loadUsers);
     </script>
 </body>
