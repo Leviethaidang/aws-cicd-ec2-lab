@@ -3,14 +3,14 @@ const mysql = require('mysql2');
 const path = require('path');
 
 const app = express();
-const port = 80;
+const port = 8001;
 
 // Cấu hình Connection Pool kết nối tới RDS
 const db = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost', // co bien DB_HOST thi lay, khong thi la localhost
+    host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'admin',
-    password: process.env.DB_PASSWORD || 'Letmein123!!!',
-    database: process.env.DB_NAME || 'appdb',
+    password: process.env.DB_PASSWORD || 'Defau123!!!',
+    database: process.env.DB_NAME || 'userdb',
     waitForConnections: true,
     connectionLimit: 10
 });
